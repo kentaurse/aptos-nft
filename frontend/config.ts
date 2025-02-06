@@ -1,6 +1,9 @@
 import Placeholder1 from "@/assets/placeholders/bear-1.png";
 import Placeholder2 from "@/assets/placeholders/bear-2.png";
 import Placeholder3 from "@/assets/placeholders/bear-3.png";
+import Slothify from "@/assets/team/slothify.jpg";
+import Ryorod from "@/assets/team/ryorod.jpg";
+import arjanjohan from "@/assets/team/arjanjohan.jpg";
 
 export const config: Config = {
   // TODO: Fill in your collection id
@@ -8,8 +11,7 @@ export const config: Config = {
 
   // Removing one or all of these socials will remove them from the page
   socials: {
-    twitter: "https://twitter.com",
-    discord: "https://discord.com",
+    twitter: "https://x.com/thedailygmove",
     homepage: "#",
   },
 
@@ -32,24 +34,27 @@ export const config: Config = {
     title: "Our Team",
     members: [
       {
-        name: "Mepoti",
+        name: "Slothify",
         role: "Aliquip Esse",
-        img: Placeholder1,
+        img: Slothify,
         socials: {
-          twitter: "https://twitter.com",
+          twitter: "https://x.com/zkSlothify",
         },
       },
       {
-        name: "Zucker",
+        name: "Ryorod",
         role: "Sunt Duis",
-        img: Placeholder2,
+        img: Ryorod,
+        socials: {
+          twitter: "https://x.com/987654_21",
+        },
       },
       {
-        name: "SimonT",
+        name: "arjanjohan",
         role: "Ullamco Tempor",
-        img: Placeholder3,
+        img: arjanjohan,
         socials: {
-          twitter: "https://twitter.com",
+          twitter: "https://x.com/arjanjohan",
         },
       },
     ],
