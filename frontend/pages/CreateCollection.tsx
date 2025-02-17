@@ -11,8 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { LaunchpadHeader } from "@/components/LaunchpadHeader";
-import { CREATOR_ADDRESS } from "@/constants";
-import { WarningAlert } from "@/components/ui/warning-alert";
 import { UploadSpinner } from "@/components/UploadSpinner";
 import { LabeledInput } from "@/components/ui/labeled-input";
 import { DateTimeInput } from "@/components/ui/date-time-input";
@@ -75,7 +73,6 @@ export function CreateCollection() {
     try {
       if (!account) throw new Error("Please connect your wallet");
       if (!files) throw new Error("Please upload files");
-      if (account.address !== CREATOR_ADDRESS) throw new Error("Wrong account");
       if (isUploading) throw new Error("Uploading in progress");
 
       // Set internal isUploading state
@@ -130,16 +127,6 @@ export function CreateCollection() {
 
       <div className="flex flex-col md:flex-row items-start justify-between px-4 py-2 gap-4 max-w-screen-xl mx-auto">
         <div className="w-full md:w-2/3 flex flex-col gap-y-4 order-2 md:order-1">
-          {(!account || account.address !== CREATOR_ADDRESS) && (
-            <WarningAlert title={account ? "Wrong account connected" : "No account connected"}>
-              To continue with creating your collection, make sure you are connected with a Wallet and with the same
-              profile account as in your COLLECTION_CREATOR_ADDRESS in{" "}
-              <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
-                .env
-              </code>{" "}
-              file
-            </WarningAlert>
-          )}
 
           <UploadSpinner on={isUploading} />
 

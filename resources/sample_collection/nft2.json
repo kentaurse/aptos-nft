@@ -1,0 +1,16 @@
+{
+  "name": "Sample NFT #2",
+  "description": "This is a sample description for NFT #2.",
+  "image": "",
+  "external_url": "https://example.com",
+  "attributes": [
+    {
+      "trait_type": "Background",
+      "value": "Red"
+    },
+    {
+      "trait_type": "Eyes",
+      "value": "Brown"
+    }
+  ]
+}
