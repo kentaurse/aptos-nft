@@ -28,8 +28,6 @@ module launchpad_addr::launchpad {
     const ENOT_PENDING_ADMIN: u64 = 3;
     /// Only admin can update mint fee collector
     const EONLY_ADMIN_CAN_UPDATE_MINT_FEE_COLLECTOR: u64 = 4;
-    /// Only admin or creator can create collection
-    const EONLY_ADMIN_OR_CREATOR_CAN_CREATE_COLLECTION: u64 = 5;
     /// No active mint stages
     const ENO_ACTIVE_STAGES: u64 = 6;
     /// Creator must set at least one mint stage
@@ -194,13 +192,8 @@ module launchpad_addr::launchpad {
         public_mint_limit_per_addr: Option<u64>,
         // Public mint fee per NFT denominated in oapt (smallest unit of APT, i.e. 1e-8 APT)
         public_mint_fee_per_nft: Option<u64>,
-    ) acquires Registry, Config, CollectionConfig, CollectionOwnerObjConfig {
+    ) acquires Registry, CollectionConfig, CollectionOwnerObjConfig {
         let sender_addr = signer::address_of(sender);
-        let config = borrow_global<Config>(@launchpad_addr);
-        assert!(
-            is_admin(config, sender_addr) || is_creator(config, sender_addr),
-            EONLY_ADMIN_OR_CREATOR_CAN_CREATE_COLLECTION
-        );
 
         let royalty = royalty(&mut royalty_percentage, sender_addr);
 
