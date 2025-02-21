@@ -2,7 +2,6 @@ import { useGetCollectionData } from "@/hooks/useGetCollectionData";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { WalletSelector } from "./WalletSelector";
-import { IS_DEV } from "@/constants";
 import { buttonVariants } from "@/components/ui/button";
 import { config } from "@/config";
 
@@ -20,16 +19,12 @@ export function Header() {
       </h1>
 
       <div className="flex gap-2 items-center flex-wrap">
-        {IS_DEV && (
-          <>
             <Link className={buttonVariants({ variant: "link" })} to={"/my-collections"}>
               My Collections
             </Link>
             <Link className={buttonVariants({ variant: "link" })} to={"/create-collection"}>
               Create Collection
             </Link>
-          </>
-        )}
         <WalletSelector />
       </div>
     </div>
