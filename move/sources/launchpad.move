@@ -113,7 +113,7 @@ module launchpad_addr::launchpad {
 
     /// Unique per collection
     struct CollectionBurnRefs has key, store, drop {
-        burn_ref_map: SimpleMap<u64, token::BurnRef>,
+        burn_ref_map: SimpleMap<address, token::BurnRef>,
     }
 
     /// Global per contract
@@ -204,7 +204,7 @@ module launchpad_addr::launchpad {
         public_mint_limit_per_addr: Option<u64>,
         // Public mint fee per NFT denominated in oapt (smallest unit of APT, i.e. 1e-8 APT)
         public_mint_fee_per_nft: Option<u64>,
-    ) acquires Registry, CollectionConfig, CollectionOwnerObjConfig {
+    ) acquires Registry, CollectionConfig, CollectionOwnerObjConfig, CollectionBurnRefs {
         let sender_addr = signer::address_of(sender);
 
         let royalty = royalty(&mut royalty_percentage, sender_addr);
@@ -235,6 +235,10 @@ module launchpad_addr::launchpad {
         move_to(collection_obj_signer, CollectionConfig {
             mint_fee_per_nft_by_stages: simple_map::new(),
             collection_owner_obj,
+        });
+
+        move_to(collection_obj_signer, CollectionBurnRefs {
+            burn_ref_map: simple_map::new(),
         });
 
         assert!(
@@ -311,7 +315,7 @@ module launchpad_addr::launchpad {
         sender: &signer,
         collection_obj: Object<Collection>,
         amount: u64,
-    ) acquires CollectionConfig, CollectionOwnerObjConfig, Config {
+    ) acquires CollectionConfig, CollectionOwnerObjConfig, Config, CollectionBurnRefs {
         let sender_addr = signer::address_of(sender);
 
         let stage_idx = &mint_stage::execute_earliest_stage(sender, collection_obj, amount);
@@ -376,16 +380,25 @@ module launchpad_addr::launchpad {
         let nft_obj: Object<Token> = object::object_from_constructor_ref(nft_obj_constructor_ref);
         object::transfer(main_collection_owner_obj_signer, nft_obj, signer::address_of(sender));
 
+        // TODO: Check if this is needed?
         // // Remove all custom data from NFT's before burning
         // let main_token_address = object::object_address(&main_nft);
         // let other_token_address = object::object_address(&other_nft);
         // let CustomData { ... } = move_from<CustomData>(main_token_address);
         // let CustomData { ... } = move_from<CustomData>(other_token_address);
         
+        // Retrieve the burn_refs
 
-        // // Burn NFT's
-        token::burn(main_nft.burn_ref);
-        token::burn(other_nft_burn_ref);
+        let main_nft_addr = object::object_address(&main_nft);
+        let other_nft_addr = object::object_address(&other_nft);
+
+        let collection_burn_refs = borrow_global<CollectionBurnRefs>(object::object_address(&main_collection_obj));
+        let main_nft_burn_ref = simple_map::borrow(&collection_burn_refs.burn_ref_map, &main_nft_addr);
+        let other_nft_burn_ref = simple_map::borrow(&collection_burn_refs.burn_ref_map, &other_nft_addr);
+
+        // Burn NFTs using the retrieved burn_refs
+        token::burn(*main_nft_burn_ref);
+        token::burn(*other_nft_burn_ref);
     }
     
 
@@ -596,42 +609,52 @@ module launchpad_addr::launchpad {
         }
     }
 
-    /// ACtual implementation of minting NFT
-    fun mint_nft_internal(
-        sender_addr: address,
-        collection_obj: Object<Collection>,
-    ): Object<Token> acquires CollectionConfig, CollectionOwnerObjConfig {
-        let collection_config = borrow_global<CollectionConfig>(object::object_address(&collection_obj));
+fun mint_nft_internal(
+    sender_addr: address,
+    collection_obj: Object<Collection>,
+) : Object<Token> acquires CollectionConfig, CollectionOwnerObjConfig, CollectionBurnRefs {
+    let collection_config = borrow_global<CollectionConfig>(object::object_address(&collection_obj));
 
-        let collection_owner_obj = collection_config.collection_owner_obj;
-        let collection_owner_config = borrow_global<CollectionOwnerObjConfig>(
-            object::object_address(&collection_owner_obj)
-        );
-        let collection_owner_obj_signer = &object::generate_signer_for_extending(&collection_owner_config.extend_ref);
+    let collection_owner_obj = collection_config.collection_owner_obj;
+    let collection_owner_config = borrow_global<CollectionOwnerObjConfig>(
+        object::object_address(&collection_owner_obj)
+    );
+    let collection_owner_obj_signer = &object::generate_signer_for_extending(&collection_owner_config.extend_ref);
 
-        let next_nft_id = *option::borrow(&collection::count(collection_obj)) + 1;
+    let next_nft_id = *option::borrow(&collection::count(collection_obj)) + 1;
 
-        let collection_uri = collection::uri(collection_obj);
-        let nft_metadata_uri = construct_nft_metadata_uri(&collection_uri, next_nft_id);
+    let collection_uri = collection::uri(collection_obj);
+    let nft_metadata_uri = construct_nft_metadata_uri(&collection_uri, next_nft_id);
 
-        let nft_obj_constructor_ref = &token::create(
-            collection_owner_obj_signer,
-            collection::name(collection_obj),
-            // placeholder value, please read description from json metadata in offchain storage
-            string_utils::to_string(&next_nft_id),
-            // placeholder value, please read name from json metadata in offchain storage
-            string_utils::to_string(&next_nft_id),
-            royalty::get(collection_obj),
-            nft_metadata_uri,
-        );
-        let nft_burn_ref= token::generate_burn_ref(nft_obj_constructor_ref);
-        // TODO: Store the burn refs somewhere safe/secure
-        token_components::create_refs(nft_obj_constructor_ref);
-        let nft_obj = object::object_from_constructor_ref(nft_obj_constructor_ref);
-        object::transfer(collection_owner_obj_signer, nft_obj, sender_addr);
+    let nft_obj_constructor_ref = &token::create(
+        collection_owner_obj_signer,
+        collection::name(collection_obj),
+        // placeholder value, please read description from json metadata in offchain storage
+        string_utils::to_string(&next_nft_id),
+        // placeholder value, please read name from json metadata in offchain storage
+        string_utils::to_string(&next_nft_id),
+        royalty::get(collection_obj),
+        nft_metadata_uri,
+    );
 
-        nft_obj
-    }
+    // Generate and store the burn_ref
+    let nft_burn_ref = token::generate_burn_ref(nft_obj_constructor_ref);
+    
+    // Get the object address of the newly created NFT
+    let nft_obj = object::object_from_constructor_ref(nft_obj_constructor_ref);
+    let nft_obj_addr = object::object_address(&nft_obj);
+
+    // Store the burn_ref in CollectionBurnRefs using the NFT's address as the key
+    let collection_burn_refs = borrow_global_mut<CollectionBurnRefs>(object::object_address(&collection_obj));
+    simple_map::upsert(&mut collection_burn_refs.burn_ref_map, nft_obj_addr, nft_burn_ref);
+
+    // Complete the creation and transfer of the NFT
+    token_components::create_refs(nft_obj_constructor_ref);
+    object::transfer(collection_owner_obj_signer, nft_obj, sender_addr);
+
+    nft_obj
+}
+
 
     /// Construct NFT metadata URI
     fun construct_nft_metadata_uri(
