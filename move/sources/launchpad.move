@@ -88,13 +88,6 @@ module launchpad_addr::launchpad {
         recipient_addr: address,
     }
 
-    #[event]
-    struct CombineNftsEvent has store, drop {
-        old_nft_objs: vector<Object<Token>>,
-        new_nft_obj: Object<Token>,
-        recipient_addr: address,
-    }
-
     /// Unique per collection
     /// We need this object to own the collection object instead of contract directly owns the collection object
     /// This helps us avoid address collision when we create multiple collections with same name
@@ -109,11 +102,6 @@ module launchpad_addr::launchpad {
         // Key is stage, value is mint fee denomination
         mint_fee_per_nft_by_stages: SimpleMap<String, u64>,
         collection_owner_obj: Object<CollectionOwnerObjConfig>,
-    }
-
-    /// Unique per collection
-    struct CollectionBurnRefs has key, store, drop {
-        burn_ref_map: SimpleMap<address, token::BurnRef>,
     }
 
     /// Global per contract
@@ -204,7 +192,7 @@ module launchpad_addr::launchpad {
         public_mint_limit_per_addr: Option<u64>,
         // Public mint fee per NFT denominated in oapt (smallest unit of APT, i.e. 1e-8 APT)
         public_mint_fee_per_nft: Option<u64>,
-    ) acquires Registry, CollectionConfig, CollectionOwnerObjConfig, CollectionBurnRefs {
+    ) acquires Registry, CollectionConfig, CollectionOwnerObjConfig {
         let sender_addr = signer::address_of(sender);
 
         let royalty = royalty(&mut royalty_percentage, sender_addr);
@@ -235,10 +223,6 @@ module launchpad_addr::launchpad {
         move_to(collection_obj_signer, CollectionConfig {
             mint_fee_per_nft_by_stages: simple_map::new(),
             collection_owner_obj,
-        });
-
-        move_to(collection_obj_signer, CollectionBurnRefs {
-            burn_ref_map: simple_map::new(),
         });
 
         assert!(
@@ -315,7 +299,7 @@ module launchpad_addr::launchpad {
         sender: &signer,
         collection_obj: Object<Collection>,
         amount: u64,
-    ) acquires CollectionConfig, CollectionOwnerObjConfig, Config, CollectionBurnRefs {
+    ) acquires CollectionConfig, CollectionOwnerObjConfig, Config {
         let sender_addr = signer::address_of(sender);
 
         let stage_idx = &mint_stage::execute_earliest_stage(sender, collection_obj, amount);
@@ -339,69 +323,6 @@ module launchpad_addr::launchpad {
             nft_objs,
         });
     }
-
-    /// Combine NFT, anyone with to eligible NFT's can combine them into a new NFT.
-    /// The main NFT (TODO: Or collection?) metadata contains information about possible combinations and outcomes.
-    /// Burns the main_nft and other_nft. Mints a new NFT in the same collection as main_nft (with same tokenId)
-    public entry fun combine_nft(
-        sender: &signer,
-        main_collection_obj: Object<Collection>,
-        main_nft: Object<Token>, 
-        other_nft: Object<Token>,
-    ) acquires CollectionConfig, CollectionOwnerObjConfig, CollectionBurnRefs {
-
-        // check if sender is owner of both NFTs
-        let main_collection_config = borrow_global<CollectionConfig>(object::object_address(&main_collection_obj));
-
-        let main_collection_owner_obj = main_collection_config.collection_owner_obj;
-        let main_collection_owner_config = borrow_global<CollectionOwnerObjConfig>(
-            object::object_address(&main_collection_owner_obj)
-        );
-        let main_collection_owner_obj_signer = &object::generate_signer_for_extending(&main_collection_owner_config.extend_ref);
-
-        let main_uri = token::uri(main_nft);
-        // This copies the current description ane name from the main_nft
-        // TODO: This should be read from the metadata of the main_nft
-        let description = token::description(main_nft);
-        let name = token::name(main_nft);
-
-        // Create new NFT
-        let nft_obj_constructor_ref = &token::create(
-            main_collection_owner_obj_signer,
-            collection::name(main_collection_obj),
-            // placeholder value, please read description from json metadata in offchain storage
-            description,
-            // placeholder value, please read name from json metadata in offchain storage
-            name,
-            royalty::get(main_collection_obj),
-            main_uri,
-        );
-        token_components::create_refs(nft_obj_constructor_ref);
-        let nft_obj: Object<Token> = object::object_from_constructor_ref(nft_obj_constructor_ref);
-        object::transfer(main_collection_owner_obj_signer, nft_obj, signer::address_of(sender));
-
-        // TODO: Check if this is needed?
-        // // Remove all custom data from NFT's before burning
-        // let main_token_address = object::object_address(&main_nft);
-        // let other_token_address = object::object_address(&other_nft);
-        // let CustomData { ... } = move_from<CustomData>(main_token_address);
-        // let CustomData { ... } = move_from<CustomData>(other_token_address);
-        
-        // Retrieve the burn_refs
-
-        let main_nft_addr = object::object_address(&main_nft);
-        let other_nft_addr = object::object_address(&other_nft);
-
-        let collection_burn_refs = borrow_global<CollectionBurnRefs>(object::object_address(&main_collection_obj));
-        let main_nft_burn_ref = simple_map::borrow(&collection_burn_refs.burn_ref_map, &main_nft_addr);
-        let other_nft_burn_ref = simple_map::borrow(&collection_burn_refs.burn_ref_map, &other_nft_addr);
-
-        // Burn NFTs using the retrieved burn_refs
-        token::burn(*main_nft_burn_ref);
-        token::burn(*other_nft_burn_ref);
-    }
-    
-
 
     // ================================= View  ================================= //
 
@@ -609,52 +530,40 @@ module launchpad_addr::launchpad {
         }
     }
 
-fun mint_nft_internal(
-    sender_addr: address,
-    collection_obj: Object<Collection>,
-) : Object<Token> acquires CollectionConfig, CollectionOwnerObjConfig, CollectionBurnRefs {
-    let collection_config = borrow_global<CollectionConfig>(object::object_address(&collection_obj));
+    /// ACtual implementation of minting NFT
+    fun mint_nft_internal(
+        sender_addr: address,
+        collection_obj: Object<Collection>,
+    ): Object<Token> acquires CollectionConfig, CollectionOwnerObjConfig {
+        let collection_config = borrow_global<CollectionConfig>(object::object_address(&collection_obj));
 
-    let collection_owner_obj = collection_config.collection_owner_obj;
-    let collection_owner_config = borrow_global<CollectionOwnerObjConfig>(
-        object::object_address(&collection_owner_obj)
-    );
-    let collection_owner_obj_signer = &object::generate_signer_for_extending(&collection_owner_config.extend_ref);
+        let collection_owner_obj = collection_config.collection_owner_obj;
+        let collection_owner_config = borrow_global<CollectionOwnerObjConfig>(
+            object::object_address(&collection_owner_obj)
+        );
+        let collection_owner_obj_signer = &object::generate_signer_for_extending(&collection_owner_config.extend_ref);
 
-    let next_nft_id = *option::borrow(&collection::count(collection_obj)) + 1;
+        let next_nft_id = *option::borrow(&collection::count(collection_obj)) + 1;
 
-    let collection_uri = collection::uri(collection_obj);
-    let nft_metadata_uri = construct_nft_metadata_uri(&collection_uri, next_nft_id);
+        let collection_uri = collection::uri(collection_obj);
+        let nft_metadata_uri = construct_nft_metadata_uri(&collection_uri, next_nft_id);
 
-    let nft_obj_constructor_ref = &token::create(
-        collection_owner_obj_signer,
-        collection::name(collection_obj),
-        // placeholder value, please read description from json metadata in offchain storage
-        string_utils::to_string(&next_nft_id),
-        // placeholder value, please read name from json metadata in offchain storage
-        string_utils::to_string(&next_nft_id),
-        royalty::get(collection_obj),
-        nft_metadata_uri,
-    );
+        let nft_obj_constructor_ref = &token::create(
+            collection_owner_obj_signer,
+            collection::name(collection_obj),
+            // placeholder value, please read description from json metadata in offchain storage
+            string_utils::to_string(&next_nft_id),
+            // placeholder value, please read name from json metadata in offchain storage
+            string_utils::to_string(&next_nft_id),
+            royalty::get(collection_obj),
+            nft_metadata_uri,
+        );
+        token_components::create_refs(nft_obj_constructor_ref);
+        let nft_obj = object::object_from_constructor_ref(nft_obj_constructor_ref);
+        object::transfer(collection_owner_obj_signer, nft_obj, sender_addr);
 
-    // Generate and store the burn_ref
-    let nft_burn_ref = token::generate_burn_ref(nft_obj_constructor_ref);
-    
-    // Get the object address of the newly created NFT
-    let nft_obj = object::object_from_constructor_ref(nft_obj_constructor_ref);
-    let nft_obj_addr = object::object_address(&nft_obj);
-
-    // Store the burn_ref in CollectionBurnRefs using the NFT's address as the key
-    let collection_burn_refs = borrow_global_mut<CollectionBurnRefs>(object::object_address(&collection_obj));
-    simple_map::upsert(&mut collection_burn_refs.burn_ref_map, nft_obj_addr, nft_burn_ref);
-
-    // Complete the creation and transfer of the NFT
-    token_components::create_refs(nft_obj_constructor_ref);
-    object::transfer(collection_owner_obj_signer, nft_obj, sender_addr);
-
-    nft_obj
-}
-
+        nft_obj
+    }
 
     /// Construct NFT metadata URI
     fun construct_nft_metadata_uri(

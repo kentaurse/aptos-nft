@@ -4,9 +4,9 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-launchpad_addr = "0x5be4aa46852694bf8a5d78dc34546a9f376986814b9d2f00bc12d5d3c48a8002"
-initial_creator_addr = "0x5be4aa46852694bf8a5d78dc34546a9f376986814b9d2f00bc12d5d3c48a8002"
-minter = "0x00e18a6040d3d56e54f63b82358125949ecf23a70a897c897f04bb25d61a175d"
+launchpad_addr = "ab2aa484d407b284056c6ca34efa8b2c26b8651843df800bf8ccf7bd1c29af41"
+initial_creator_addr = "ab2aa484d407b284056c6ca34efa8b2c26b8651843df800bf8ccf7bd1c29af41"
+minter = "0x3c41ff6b5845e0094e19888cba63773591be9de59cafa9e582386f6af15dd490"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", rev = "mainnet", subdir = "aptos-move/framework/aptos-framework" }
