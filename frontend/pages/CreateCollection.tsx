@@ -22,7 +22,7 @@ import { createCollection } from "@/entry-functions/create_collection";
 
 export function CreateCollection() {
   // Wallet Adapter provider
-  // const aptosWallet = useWallet();
+  const aptosWallet = useWallet();
   const { account, signAndSubmitTransaction } = useWallet();
 
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ export function CreateCollection() {
     try {
       if (!account) throw new Error("Please connect your wallet");
       if (!files) throw new Error("Please upload files");
-      // if (account.address !== CREATOR_ADDRESS) throw new Error("Wrong account");
+      if (account.address !== CREATOR_ADDRESS) throw new Error("Wrong account");
       if (isUploading) throw new Error("Uploading in progress");
 
       // Set internal isUploading state
@@ -83,7 +83,7 @@ export function CreateCollection() {
 
       // Upload collection files to Irys
       const { collectionName, collectionDescription, maxSupply, projectUri } = await uploadCollectionData(
-        // aptosWallet,
+        aptosWallet,
         files,
       );
 
