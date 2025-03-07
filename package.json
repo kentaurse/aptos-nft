@@ -40,6 +40,7 @@
     "ipfs-http-client": "^60.0.1",
     "lucide-react": "^0.383.0",
     "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.23.1",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@types/node": "^20.14.1",
     "@types/react": "^18.2.66",
+    "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
