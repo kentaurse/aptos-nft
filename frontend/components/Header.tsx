@@ -25,6 +25,9 @@ export function Header() {
             <Link className={buttonVariants({ variant: "link" })} to={"/create-collection"}>
               Create Collection
             </Link>
+            <Link className={buttonVariants({ variant: "link" })} to={"/craft-nft"}>
+              Craft NFT
+            </Link>
         <WalletSelector />
       </div>
     </div>
