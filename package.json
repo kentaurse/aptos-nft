@@ -19,6 +19,9 @@
   "dependencies": {
     "@aptos-labs/ts-sdk": "1.22.1",
     "@aptos-labs/wallet-adapter-react": "^3.5.0",
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/modifiers": "^7.0.0",
+    "@dnd-kit/sortable": "^8.0.0",
     "@irys/sdk": "^0.2.1",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
@@ -40,7 +43,6 @@
     "ipfs-http-client": "^60.0.1",
     "lucide-react": "^0.383.0",
     "react": "^18.2.0",
-    "react-beautiful-dnd": "^13.1.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.23.1",
@@ -50,7 +52,6 @@
   "devDependencies": {
     "@types/node": "^20.14.1",
     "@types/react": "^18.2.66",
-    "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.2.22",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
