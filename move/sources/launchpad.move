@@ -365,7 +365,10 @@ module launchpad_addr::launchpad {
         let description = token::description(main_nft);
         let name = token::name(main_nft);
 
+        // TODO: Check if this is a valid combination
+
         // Create new NFT
+        // TODO: This should change the metadata
         let nft_obj_constructor_ref = &token::create(
             main_collection_owner_obj_signer,
             collection::name(main_collection_obj),
