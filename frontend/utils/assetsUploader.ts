@@ -3,7 +3,6 @@ import { create } from "ipfs-http-client";
 const projectId = "2Xi31agz7M8y7BuefMlhbswjv3L";
 const projectSecret = "1d72178ee211645564992adfd6ddc6f2";
 
-
 // Configure the IPFS client
 const ipfs = create({
   host: "ipfs.infura.io", // You can use Infura or your own IPFS node
