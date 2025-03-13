@@ -2,7 +2,7 @@ import { LaunchpadHeader } from "@/components/LaunchpadHeader";
 import { aptosClient } from "@/utils/aptosClient";
 import { InputTransactionData, useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useState } from "react";
-import { DndContext, DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -28,9 +28,16 @@ export function CraftNFT() {
   const [selectedParent, setSelectedParent] = useState<NFT | null>(null);
   const [selectedChildren, setSelectedChildren] = useState<NFT[]>([]);
   const [initialChildrenNFTs, setInitialChildrenNFTs] = useState<NFT[]>(initialChildrenNFTsData);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id.toString());
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
 
     if (over && over.id === "droppable-area" && active.id !== over.id) {
       handleChildDrop(active.id.toString());
@@ -124,7 +131,7 @@ export function CraftNFT() {
         {selectedParent && (
           <div className="mt-10 text-center">
             <h2 className="text-xl">Children NFTs</h2>
-            <DndContext onDragEnd={handleDragEnd}>
+            <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <DroppableArea id="droppable-area">
                 <SortableContext items={selectedChildren.map((nft) => nft.id)}>
                   <div className="flex space-x-4 mt-4 justify-center">
@@ -139,6 +146,24 @@ export function CraftNFT() {
                   <DraggableChildNFT key={nft.id} nft={nft} />
                 ))}
               </div>
+              <DragOverlay>
+                {activeId ? (
+                  <div className="w-24 h-24 border border-green-500">
+                    <img
+                      src={
+                        initialChildrenNFTs.find((nft) => nft.id === activeId)?.image ||
+                        selectedChildren.find((nft) => nft.id === activeId)?.image
+                      }
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    <p className="text-center">
+                      {initialChildrenNFTs.find((nft) => nft.id === activeId)?.name ||
+                        selectedChildren.find((nft) => nft.id === activeId)?.name}
+                    </p>
+                  </div>
+                ) : null}
+              </DragOverlay>
             </DndContext>
           </div>
         )}
@@ -187,13 +212,14 @@ const DroppableArea: React.FC<{ id: string; children: React.ReactNode }> = ({ id
 };
 
 const SortableNFT: React.FC<{ nft: NFT }> = ({ nft }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: nft.id,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0 : 1,
   };
 
   return (
